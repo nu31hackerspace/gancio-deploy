@@ -4,27 +4,20 @@ services:
   app:
     image: ${IMAGE_REPOSITORY}:${GIT_COMMIT_SHA}
     environment:
+      - PATH=/home/node/.yarn/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - GANCIO_DATA=/home/node/data
       - NODE_ENV=production
-      - BASEURL=${BASEURL}
-      - HOST=0.0.0.0
-      - PORT=13120
+      - GANCIO_HOST=0.0.0.0
+      - GANCIO_PORT=13120
       - LOG_LEVEL=${LOG_LEVEL:-info}
-      - LOG_PATH=/app
-      - DB_DIALECT=postgres
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DB_DATABASE=${DB_DATABASE}
-      - DB_USERNAME=${DB_USERNAME}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - USER_LOCALE=/app/user_locale
-      - UPLOAD_PATH=/app/uploads
-      - PLUGINS_PATH=/app/plugins
-      - NUXT_SESSION_PASSWORD=${NUXT_SESSION_PASSWORD}
-      - NUXT_SESSION_COOKIE_SECURE=true
+      - GANCIO_DB_DIALECT=postgres
+      - GANCIO_DB_HOST=${DB_HOST}
+      - GANCIO_DB_PORT=${DB_PORT}
+      - GANCIO_DB_DATABASE=${DB_DATABASE}
+      - GANCIO_DB_USERNAME=${DB_USERNAME}
+      - GANCIO_DB_PASSWORD=${DB_PASSWORD}
     volumes:
-      - gancio-uploads:/app/uploads
-      - gancio-logs:/app/logs
-      - gancio-user-locale:/app/user_locale
+      - gancio-data:/home/node/data
     networks:
       - infra_reverse-proxy
       - infra_postgres-net
@@ -35,9 +28,7 @@ services:
         condition: on-failure
 
 volumes:
-  gancio-uploads:
-  gancio-logs:
-  gancio-user-locale:
+  gancio-data:
 
 networks:
   infra_reverse-proxy:

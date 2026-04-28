@@ -6,7 +6,7 @@ It contains:
 
 - `docker-stack.yml`
 - GitHub Actions deployment workflow
-- minimal infra integration notes
+- minimal infra integration notes for `v1.28.2`
 
 ## Files in this repository
 
@@ -77,38 +77,26 @@ Push this directory into a separate GitHub repository, for example `nu31hackersp
 
 Required secrets:
 
-- `BASEURL`
+- `HOST`
+- `USERNAME`
+- `ROOT_SSH_PRIVATE_KEY`
 - `DB_HOST`
 - `DB_PORT`
 - `DB_DATABASE`
 - `DB_USERNAME`
 - `DB_PASSWORD`
-- `NUXT_SESSION_PASSWORD`
 
 Optional:
 
 - `LOG_LEVEL`
 
-Required existing org-level infra credentials:
-
-- variable `HOST`
-- variable `USERNAME`
-- secret `ROOT_SSH_PRIVATE_KEY`
-
 Example:
 
-- `BASEURL=https://events.nu31.space`
+- `HOST=65.109.28.227`
+- `USERNAME=root`
 - `DB_HOST=infra-postgres-1`
 - `DB_PORT=5432`
 - `LOG_LEVEL=info`
-
-`NUXT_SESSION_PASSWORD` must be at least 32 characters long.
-
-Example generation:
-
-```bash
-openssl rand -base64 32
-```
 
 ### 7. Configure GitHub Variables
 
@@ -140,11 +128,12 @@ Checks:
 - `docker service ps gancio_app`
 - `gancio` logs
 - `https://events.nu31.space`
+- initial setup page `/setup/0`
 
 ## Important notes
 
-- `gancio` runs database migrations automatically on startup
-- a separate migration job is not required for the basic setup
-- user uploads are stored in the `gancio-uploads` Docker volume
-- logs are stored in the `gancio-logs` Docker volume
-- `user_locale` is stored in the `gancio-user-locale` Docker volume
+- this deployment targets `gancio v1.28.2`
+- `v1.28.2` uses web setup and writes `config.json` into persistent storage
+- app state is stored in the `gancio-data` Docker volume
+- after the first deploy, open `https://events.nu31.space` and complete the web setup
+- `config.json`, uploads, logs, and `user_locale` are stored inside `/home/node/data`
