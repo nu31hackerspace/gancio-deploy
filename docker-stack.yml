@@ -25,7 +25,7 @@ services:
       update_config:
         order: start-first
       restart_policy:
-        condition: on-failure
+        condition: any
 
 volumes:
   gancio-data:

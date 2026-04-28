@@ -136,4 +136,5 @@ Checks:
 - `v1.28.2` uses web setup and writes `config.json` into persistent storage
 - app state is stored in the `gancio-data` Docker volume
 - after the first deploy, open `https://events.nu31.space` and complete the web setup
+- after setup, `gancio` exits once on purpose and must be restarted by Swarm
 - `config.json`, uploads, logs, and `user_locale` are stored inside `/home/node/data`
