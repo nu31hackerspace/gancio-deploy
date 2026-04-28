@@ -77,9 +77,6 @@ Push this directory into a separate GitHub repository, for example `nu31hackersp
 
 Required secrets:
 
-- `DEPLOY_HOST`
-- `DEPLOY_USER`
-- `DEPLOY_SSH_PRIVATE_KEY`
 - `BASEURL`
 - `DB_HOST`
 - `DB_PORT`
@@ -91,6 +88,12 @@ Required secrets:
 Optional:
 
 - `LOG_LEVEL`
+
+Required existing org-level infra credentials:
+
+- variable `HOST`
+- variable `USERNAME`
+- secret `ROOT_SSH_PRIVATE_KEY`
 
 Example:
 
