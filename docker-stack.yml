@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+  app:
+    image: ${IMAGE_REPOSITORY}:${GIT_COMMIT_SHA}
+    environment:
+      - NODE_ENV=production
+      - BASEURL=${BASEURL}
+      - HOST=0.0.0.0
+      - PORT=13120
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_PATH=/app
+      - DB_DIALECT=postgres
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - USER_LOCALE=/app/user_locale
+      - UPLOAD_PATH=/app/uploads
+      - PLUGINS_PATH=/app/plugins
+      - NUXT_SESSION_PASSWORD=${NUXT_SESSION_PASSWORD}
+      - NUXT_SESSION_COOKIE_SECURE=true
+    volumes:
+      - gancio-uploads:/app/uploads
+      - gancio-logs:/app/logs
+      - gancio-user-locale:/app/user_locale
+    networks:
+      - infra_reverse-proxy
+      - infra_postgres-net
+    deploy:
+      update_config:
+        order: start-first
+      restart_policy:
+        condition: on-failure
+
+volumes:
+  gancio-uploads:
+  gancio-logs:
+  gancio-user-locale:
+
+networks:
+  infra_reverse-proxy:
+    external: true
+  infra_postgres-net:
+    external: true

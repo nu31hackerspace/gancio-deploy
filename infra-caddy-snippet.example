@@ -1,0 +1,3 @@
+events.nu31.space {
+    reverse_proxy * gancio_app:13120
+}

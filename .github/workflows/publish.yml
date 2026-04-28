@@ -1,0 +1,119 @@
+name: Build and deploy Gancio
+
+on:
+  push:
+    branches:
+      - "main"
+  workflow_dispatch:
+    inputs:
+      gancio_ref:
+        description: "Upstream ref/tag/branch to build"
+        required: false
+        default: ""
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: gancio
+  STACK_NAME: gancio
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout deploy repository
+        uses: actions/checkout@v4
+
+      - name: Prepare image coordinates
+        id: prep
+        run: |
+          OWNER_LC="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          echo "owner_lc=$OWNER_LC" >> "$GITHUB_OUTPUT"
+
+      - name: Clone upstream Gancio
+        env:
+          DEFAULT_REPOSITORY: https://framagit.org/les/gancio.git
+          DEFAULT_REF: main
+          GANCIO_REPOSITORY: ${{ vars.GANCIO_REPOSITORY }}
+          GANCIO_REF_FROM_VARS: ${{ vars.GANCIO_REF }}
+          GANCIO_REF_FROM_INPUT: ${{ github.event.inputs.gancio_ref }}
+        run: |
+          REPO="${GANCIO_REPOSITORY:-$DEFAULT_REPOSITORY}"
+          REF="${GANCIO_REF_FROM_INPUT:-${GANCIO_REF_FROM_VARS:-$DEFAULT_REF}}"
+          git init ./src
+          git -C ./src remote add origin "$REPO"
+          git -C ./src fetch --depth 1 origin "$REF"
+          git -C ./src checkout FETCH_HEAD
+          echo "Using upstream repository: $REPO"
+          echo "Using upstream ref: $REF"
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./src
+          file: ./src/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.prep.outputs.owner_lc }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ steps.prep.outputs.owner_lc }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs:
+      - build-and-push-image
+
+    steps:
+      - name: Checkout deploy repository
+        uses: actions/checkout@v4
+
+      - name: Prepare image coordinates
+        id: prep
+        run: |
+          OWNER_LC="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          echo "owner_lc=$OWNER_LC" >> "$GITHUB_OUTPUT"
+
+      - name: Create env file
+        env:
+          IMAGE_REPOSITORY: ${{ env.REGISTRY }}/${{ steps.prep.outputs.owner_lc }}/${{ env.IMAGE_NAME }}
+          GIT_COMMIT_SHA: ${{ github.sha }}
+          BASEURL: ${{ secrets.BASEURL }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_DATABASE: ${{ secrets.DB_DATABASE }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
+          LOG_LEVEL: ${{ secrets.LOG_LEVEL }}
+        run: |
+          write_var() { printf "%s='%s'\n" "$1" "$(printenv "$1")" >> ./envfile; }
+          > ./envfile
+          write_var IMAGE_REPOSITORY
+          write_var GIT_COMMIT_SHA
+          write_var BASEURL
+          write_var DB_HOST
+          write_var DB_PORT
+          write_var DB_DATABASE
+          write_var DB_USERNAME
+          write_var DB_PASSWORD
+          write_var NUXT_SESSION_PASSWORD
+          write_var LOG_LEVEL
+
+      - name: Docker Stack Deploy
+        uses: cssnr/stack-deploy-action@v1
+        with:
+          name: ${{ env.STACK_NAME }}
+          file: docker-stack.yml
+          host: ${{ secrets.DEPLOY_HOST }}
+          user: ${{ secrets.DEPLOY_USER }}
+          ssh_key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          env_file: ./envfile
