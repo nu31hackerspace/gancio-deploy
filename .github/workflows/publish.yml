@@ -36,7 +36,7 @@ jobs:
       - name: Clone upstream Gancio
         env:
           DEFAULT_REPOSITORY: https://framagit.org/les/gancio.git
-          DEFAULT_REF: main
+          DEFAULT_REF: v1.28.2
           GANCIO_REPOSITORY: ${{ vars.GANCIO_REPOSITORY }}
           GANCIO_REF_FROM_VARS: ${{ vars.GANCIO_REF }}
           GANCIO_REF_FROM_INPUT: ${{ github.event.inputs.gancio_ref }}

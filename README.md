@@ -1,64 +1,28 @@
 # Gancio Deploy for NU31 Infra
 
-This repository is used to deploy [`gancio`](https://framagit.org/les/gancio) onto the existing infrastructure in [`../infra`](../infra).
+This repository deploys [`gancio`](https://framagit.org/les/gancio) to the existing [`infra`](https://github.com/nu31hackerspace/infra).
 
-This is not a `gancio` fork and not a copy of its source code. The repository only contains deployment logic:
+It contains:
 
-- `docker-stack.yml` for Docker Swarm
-- a GitHub Actions workflow for build and deployment
-- minimal documentation for integration with `infra`
-
-This approach is useful because it allows you to:
-
-- avoid pulling the full upstream `gancio` code into your own repository
-- avoid maintaining a fork unless it is actually needed
-- upgrade `gancio` using an upstream branch, tag, or commit
-- reuse the existing networks, reverse proxy, and PostgreSQL from `infra`
-
-## What Gancio is
-
-`Gancio` is a self-hosted shared agenda for local communities. In practice, it is a web application for publishing events, pages, and announcements, with federation support.
-
-In this setup, `gancio` runs as a separate Swarm stack, while your `infra` project provides:
-
-- incoming HTTP/HTTPS through `caddy`
-- access to shared `postgres`
-- Docker Swarm overlay networks
-
-## How deployment works
-
-The flow is:
-
-1. Only this deployment repository is stored in GitHub
-2. GitHub Actions fetches the `gancio` sources from the upstream repository
-3. The workflow builds a Docker image
-4. The image is published to `GHCR`
-5. The workflow creates an `envfile`
-6. The workflow runs `docker stack deploy`
-7. `caddy` from `infra` proxies the domain to the `gancio` service
-
-At runtime this means:
-
-- the `infra` stack is already deployed on the server
-- the `gancio` stack is deployed separately
-- both stacks are attached to shared external networks
+- `docker-stack.yml`
+- GitHub Actions deployment workflow
+- minimal infra integration notes
 
 ## Files in this repository
 
 - [`docker-stack.yml`](./docker-stack.yml) Swarm stack for the application
 - [`.github/workflows/publish.yml`](./.github/workflows/publish.yml) build and deployment workflow
-- [`infra-caddy-snippet.example`](./infra-caddy-snippet.example) example `caddy` route
 
 ## Infra dependencies
 
-Before deploying, [`../infra`](../infra) must already be up and running.
+Before deploying, [`infra`](https://github.com/nu31hackerspace/infra) must already be running.
 
-This deployment expects the following external networks to already exist in `infra`:
+Required external networks:
 
 - `infra_reverse-proxy`
 - `infra_postgres-net`
 
-It also expects the following services from `infra` to already be running:
+Required services:
 
 - `caddy`
 - `postgres-1`
@@ -67,15 +31,11 @@ It also expects the following services from `infra` to already be running:
 
 ### 1. Deploy infra
 
-First, the infrastructure from [`../infra`](../infra) must be deployed.
-
-If it is already running, you can skip this step.
+`infra` must already be deployed.
 
 ### 2. Create a PostgreSQL database and user
 
-For `gancio`, it is better to create a dedicated database user and a dedicated database.
-
-Example:
+Create a dedicated PostgreSQL user and database:
 
 ```sql
 CREATE USER gancio WITH PASSWORD 'change-me';
@@ -93,15 +53,13 @@ Expected deployment parameters:
 
 ### 3. Choose a domain
 
-This setup will use:
+This setup uses `events.nu31.space`.
 
-- `events.nu31.space`
-
-Its DNS must point to the server running `infra`.
+DNS must point to the server running `infra`.
 
 ### 4. Add a Caddy route
 
-Open [`../infra/caddy/CaddyFile`](../infra/caddy/CaddyFile) and add a block like this:
+Add this block to `infra/caddy/CaddyFile`:
 
 ```caddyfile
 events.nu31.space {
@@ -109,27 +67,15 @@ events.nu31.space {
 }
 ```
 
-Where:
-
-- `events.nu31.space` is your domain
-- `gancio` is the Swarm stack name
-- `app` is the service name from [`docker-stack.yml`](./docker-stack.yml)
-
-Inside the Docker Swarm overlay network, the service will be reachable as `gancio_app`.
-
-After editing the file, redeploy `infra` so `caddy` reloads the new configuration.
+Then redeploy `infra`.
 
 ### 5. Create a GitHub repository for deployment
 
-Create a separate GitHub repository, for example:
-
-- `gancio-deploy`
-
-Then push the contents of this directory into it.
+Push this directory into a separate GitHub repository, for example `nu31hackerspace/gancio-deploy`.
 
 ### 6. Configure GitHub Secrets
 
-The repository needs these secrets:
+Required secrets:
 
 - `DEPLOY_HOST`
 - `DEPLOY_USER`
@@ -146,7 +92,7 @@ Optional:
 
 - `LOG_LEVEL`
 
-Example values:
+Example:
 
 - `BASEURL=https://events.nu31.space`
 - `DB_HOST=infra-postgres-1`
@@ -163,7 +109,7 @@ openssl rand -base64 32
 
 ### 7. Configure GitHub Variables
 
-You can optionally define:
+Optional:
 
 - `GANCIO_REPOSITORY`
 - `GANCIO_REF`
@@ -171,52 +117,26 @@ You can optionally define:
 By default the workflow uses:
 
 - repository: `https://framagit.org/les/gancio.git`
-- ref: `main`
+- ref: `v1.28.2`
 
 If you want to pin a specific version, you can set:
 
-- `GANCIO_REF=v2.0.0-alpha.3`
+- `GANCIO_REF=v1.28.2`
 - or a commit SHA
 
 ### 8. Run the deployment
 
-There are two options:
-
-- push to `main`
-- manually run the `Build and deploy Gancio` workflow
-
-The workflow will:
-
-- check out the deployment repository
-- clone upstream `gancio`
-- build the image
-- push the image to `ghcr.io/<github-owner>/gancio`
-- deploy the `gancio` stack to the server
+Push to `main` or run the `Build and deploy Gancio` workflow manually.
 
 ### 9. Verify the result
 
-After a successful workflow run:
-
-- the `gancio` service should be running in Swarm
-- `caddy` should proxy the domain to `gancio_app:13120`
-- the application should open at `BASEURL`
-
-Typical checks:
+Checks:
 
 - GitHub Actions status
 - `docker service ls`
 - `docker service ps gancio_app`
 - `gancio` logs
-- website availability on the domain
-
-## How to update Gancio
-
-There are two main approaches:
-
-- just push changes to the deployment repository and keep tracking the latest upstream `main`
-- pin `GANCIO_REF` to a tag or commit
-
-If you want controlled upgrades, using a tag or commit SHA is better.
+- `https://events.nu31.space`
 
 ## Important notes
 
@@ -225,21 +145,3 @@ If you want controlled upgrades, using a tag or commit SHA is better.
 - user uploads are stored in the `gancio-uploads` Docker volume
 - logs are stored in the `gancio-logs` Docker volume
 - `user_locale` is stored in the `gancio-user-locale` Docker volume
-
-## Current limitations
-
-This setup assumes that:
-
-- `infra` is already deployed
-- `postgres` from `infra` is reachable through the external Swarm network
-- `caddy` routes traffic by domain
-- the separate deployment repository approach works for your case
-
-If later you need:
-
-- a custom Dockerfile
-- patches on top of upstream
-- a custom init or seed step
-- dedicated backup jobs
-
-those can be added to this deployment repository without moving to a fork.
