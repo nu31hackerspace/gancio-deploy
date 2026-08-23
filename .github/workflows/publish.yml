@@ -15,8 +15,8 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: gancio
   STACK_NAME: gancio
-  HOST: ${{ secrets.HOST }}
-  USERNAME: ${{ secrets.USERNAME }}
+  HOST: ${{ vars.HOST }}
+  USERNAME: ${{ vars.USERNAME }}
 
 jobs:
   build-and-push-image:
